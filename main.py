@@ -79,12 +79,20 @@ def comp_test():
     plotDebugTriangles(cell)
     dv_tri = exportTriangleIds(cell)
     print("DUT_TV_Triangles: " + str(dv_tri))
-
     plt.show()
+
+def load_test():
+    points = np.random.random((100000,2)) * 20
+    dt = Delaunay()
+    cell = dt.triangulate(points)
+    dv_tri = exportTriangleIds(cell)
+    print("EdgeCount: {},  TriangleCount: {}".format(len(cell.quadedges), len(dv_tri)))
+
 
 np.set_printoptions(precision=3)
 #triangle = test1()
 #tetra = testAlg()
 #testSwap()
 #bad_swap_early()
-comp_test()
+#comp_test()
+load_test()

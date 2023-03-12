@@ -146,6 +146,13 @@ class Cell:
     def __repr__(self):
         return repr(self.vertices) + "\n" + repr(self.faces) + "\n" + repr(self.quadedges)
 
+    @staticmethod
+    def deleteEdge(e):
+        cell = e.quadedge.cell
+        QuadEdge.splice(e, e.oprev())
+        QuadEdge.splice(e.sym(), e.sym().oprev())
+        cell.edges.remove(e)
+
 
     @staticmethod
     def make(pos):
