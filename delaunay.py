@@ -51,6 +51,7 @@ class Delaunay:
     def insert_point(self, dt, dag, p):
         rc, data = dag.findPoint(p)
         #deubg_print("point p:{}  is {} on {}".format(p, rc, data))
+        
         if "inTriangle" in rc: # InscribedPointCase 
             orgTri = data
             dagNode = orgTri.data 
@@ -97,45 +98,58 @@ class Delaunay:
     def insertPointNonRecursive(self, dt, dag, p):
         rc, data = dag.findPoint(p)
         #deubg_print("point p:{}  is {} on {}".format(p, rc, data))
-        if "inTriangle" in rc: # InscribedPointCase 
+        e = None
+        orgTri = None
+        otv = None
+
+
+        if "inTriangle" in rc:
             orgTri = data
-            dagNode = orgTri.data 
-
             e = orgTri.getEdge()
-            otv = orgTri.getTrianglePoints()
-            
-            v = Vertex(p, dt)
             faces = [orgTri, Face(dt), Face(dt)]
-            base = QuadEdge.makeEdgeFromVertex(e.org(),v) # make center
-            QuadEdge.splice(base, e)
-            start = base
-            scaning = True
-            i = 0
-            while scaning:
-                base = QuadEdge.connect(e, base.sym())
-                dt.setOrbitLeft(e,faces[i])
-                e = base.oprev()
-                i += 1
-                scaning = e.lnext() != start
-            dt.setOrbitLeft(e,faces[i]) 
-            #deubg_display(dt, name="Triangulate V{}".format(v.id))
+            otv = orgTri.getTrianglePoints()
+        elif "onEdge" in rc:
+            e = edgeBetween2Vertices(data[0], data[1])
+            faces = [e.left(), Face(dt), e.right(), Face(dt)]
+            dagNode = [e.left().data, e.right().data]
+            otv = [e.left().getTrianglePoints(), e.right().getTrianglePoints()]
+            e = e.oprev();
+            Cell.deleteEdge(e.onext())
 
+        v = Vertex(p, dt)
+        base = QuadEdge.makeEdgeFromVertex(e.org(),v) # make center
+        QuadEdge.splice(base, e)
+        start = base
+        scaning = True
+        i = 0
+        while scaning:
+            base = QuadEdge.connect(e, base.sym())
+            dt.setOrbitLeft(e,faces[i])
+            e = base.oprev()
+            i += 1
+            scaning = e.lnext() != start
+        dt.setOrbitLeft(e,faces[i]) 
+
+        if "onEdge" in rc:
+            d1.expandDag(otv[0], faces[:2])
+            d2.expandDag(otv[1], faces[2:])
+        else:
+            dagNode = orgTri.data 
             dagNode.expandDag(otv, faces)
 
-            while True:
-                t = e.oprev()
-                if t.dest().rightOf(e) and Delaunay.isPointInCircle([e.org(), t.dest(), e.dest()], p):
-                    self.SwapAndDag(e)
-                    e = e.oprev()
-                elif e.onext() == start:
-                    return 
-                else:
-                    e = e.onext().lprev()
 
-        else:
-            assert(0)
+        #deubg_display(dt, name="Triangulate V{}".format(v.id))
 
 
+        while True:
+            t = e.oprev()
+            if t.dest().rightOf(e) and Delaunay.isPointInCircle([e.org(), t.dest(), e.dest()], p):
+                self.SwapAndDag(e)
+                e = e.oprev()
+            elif e.onext() == start:
+                return 
+            else:
+                e = e.onext().lprev()
     
     @staticmethod
     def isIllegal(p, e, dt):
@@ -177,6 +191,18 @@ class Delaunay:
         prev_f1_d.expandDag(f1_v, [e.left(), e.right()])
         prev_f2_d.joinDag(f2_v, prev_f1_d)
 
+    @staticmethod
+    def edgeBetween2Vertices(v1,v2):
+
+        e = v1.getEdge()
+        scan = e
+        scannig = True
+        while scanning:
+            if scan.dest() == v2:
+                return scan
+            scan = scan.oprev()
+            scannig = scan != e
+        return None
 
     @staticmethod
     def isPointOnEdgeOfTriangle(triangle, p):
