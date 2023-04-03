@@ -7,50 +7,67 @@ import numpy as np
 from debug import embed_debug
 import matplotlib.pyplot as plt
 
-def deubg_print(s):
-    #print(s)
+def debug_print(s):
+    print(s)
     pass
 
 
-def deubg_display(cell,name=None, disable=False):
-    #plotDebugTriangles(cell, name=name)
+def debug_display(cell,name=None, disable=False):
+    plotDebugTriangles(cell, name=name)
     pass
 
 class Delaunay:
     def triangulate(self, points):
         p1,p2,p3 = self.boundingTrianglePoints(points)
         bt = np.array([p1,p2,p3])
-
-        points = np.insert(points, 2, np.arange(len(points))+3, axis=1)
+        # NOTE in order to debug add +3 to the np.arrange this will make
+        # intermediate steps plotable
+        points = np.insert(points, 2, np.arange(len(points)), axis=1)
         bt = np.insert(bt, 2, np.arange(3), axis=1)
 
         dt = Cell.makeTriangle(bt[0], bt[1], bt[2])
         root = DagNode(dt.faces[1])
         for i in range(len(points)):
-            if i % 10000==0:
-                print("Iter {}".format(i))
-            #deubg_print("Inserting pt[{}]={}".format(i+3,points[i]))
-            #deubg_display(dt,name="Before Inserting point: {}".format(i+3))
+            #debug_print("Inserting pt[{}]={}".format(i+3,points[i]))
+            #debug_display(dt,name="Before Inserting point: {}".format(i+3))
             #self.insert_point(dt, root, points[i])
             self.insertPointNonRecursive(dt, root, points[i])
-            #deubg_display(dt,name="Point: {} finalized".format(i+3))
-        """
-        for f in dt.faces:
-            pts = [v.id for v in f.getTrianglePoints()]
-            if 0 in pts or 1 in pts or 2 in pts:
-                f.alive = False
-
+            #debug_display(dt,name="Point: {} finalized".format(i+3))
+        
+        r1,r2,r3 = dt.vertices[0:3] 
+        #self.check_boundary(dt, [r1,r2,r3])
+        self.remove_points(dt, [r1,r2,r3]) 
         dt.vertices = dt.vertices[3:]
-        for v in dt.vertices:
-            v.data = v.data-3
-        """
-
         return dt
-    
 
+    def check_boundary(self, dt, bounds):
+        scan = bounds[0].getEdgeBetween(bounds[1])
+        while True:
+            nEdge = scan.onext() 
+            if scan == nEdge:
+                break
+            QuadEdge.killEdge(scan)
+            scan = nEdge
+            if scan.dest() == bounds[2]:
+                scan = scan.sym()
+            elif scan.dest() == bounds[1]:
+                scan = scan.sym()
+        dt.vertices = dt.vertices[3:]
+        
+    def remove_points(self, dt, ps):
+        for p in ps:
+            e = p.getEdge()
+            prev = None
+            while e != prev:
+                prev = e
+                QuadEdge.killEdge(e)
+                e = p.getEdge()
+
+    #This method use recursion which i found confusing to get working
+    # stable 
     def insert_point(self, dt, dag, p):
         rc, data = dag.findPoint(p)
-        #deubg_print("point p:{}  is {} on {}".format(p, rc, data))
+        #debug_print("point p:{}  is {} on {}".format(p, rc, data))
         
         if "inTriangle" in rc: # InscribedPointCase 
             orgTri = data
@@ -68,12 +85,12 @@ class Delaunay:
             i = 0
             while scaning:
                 base = QuadEdge.connect(e, base.sym())
-                dt.setOrbitLeft(e,faces[i])
+                dt.setorbitleft(e,faces[i])
                 e = base.oprev()
                 i += 1
                 scaning = e.lnext() != start
             dt.setOrbitLeft(e,faces[i]) 
-            #deubg_display(dt, name="Triangulate V{}".format(v.id))
+            #debug_display(dt, name="Triangulate V{}".format(v.id))
 
             dagNode.expandDag(otv, faces)
             
@@ -83,21 +100,21 @@ class Delaunay:
                 self.legalize(p, e, dt)
 
         elif "notFound" in rc:
-            #deubg_print("We lost a point: {}?".format(p))
+            #debug_print("We lost a point: {}?".format(p))
             for f in dt.faces[1:]:
                 if f.alive:
                     v1,v2,v3 = f.getTrianglePoints()
-                    #deubg_print("isPointInTriangle({},{},{}) = {} ".format(v1,v2,v3, Delaunay.isPointInTriangle([v1,v2,v3],p)))
+                    #debug_print("isPointInTriangle({},{},{}) = {} ".format(v1,v2,v3, Delaunay.isPointInTriangle([v1,v2,v3],p)))
             breakpoint()
             assert(0)
         else:  # on EdgeCase 
-            #deubg_print("Handle EdgeCase")
+            #debug_print("Handle EdgeCase")
             assert(0)
         return
 
     def insertPointNonRecursive(self, dt, dag, p):
         rc, data = dag.findPoint(p)
-        #deubg_print("point p:{}  is {} on {}".format(p, rc, data))
+        #debug_print("point p:{}  is {} on {}".format(p, rc, data))
         e = None
         orgTri = None
         otv = None
@@ -138,9 +155,11 @@ class Delaunay:
             dagNode.expandDag(otv, faces)
 
 
-        #deubg_display(dt, name="Triangulate V{}".format(v.id))
+        #debug_display(dt, name="Triangulate V{}".format(v.id))
 
-
+        # this is iterative legalize it scans clockwise and checks
+        # all adjacent triangles, e is meant to be the boundary edges 
+        # this is clever rotation based on the paper  Guibas and Stolfi page 120
         while True:
             t = e.oprev()
             if t.dest().rightOf(e) and Delaunay.isPointInCircle([e.org(), t.dest(), e.dest()], p):
@@ -171,15 +190,15 @@ class Delaunay:
        
         if Delaunay.isIllegal(p, e, dt):
             
-            #deubg_print("{} illegl pre swap qe {}".format(e, e.quadedge))
-            #deubg_display(dt,name="preswap e: V{} ---> V{}".format(e.org().id, e.dest().id))
+            #debug_print("{} illegl pre swap qe {}".format(e, e.quadedge))
+            #debug_display(dt,name="preswap e: V{} ---> V{}".format(e.org().id, e.dest().id))
             self.SwapAndDag(e)
               
-            #deubg_print("{} legal post swap qe {}".format(e, e.quadedge))
-            #deubg_display(dt, "post swap e: V{} ---> V{}".format(e.org().id, e.dest().id))
+            #debug_print("{} legal post swap qe {}".format(e, e.quadedge))
+            #debug_display(dt, "post swap e: V{} ---> V{}".format(e.org().id, e.dest().id))
             edges2check = [e.onext(), e.oprev()] # we swap
             for e in edges2check:
-                #deubg_print("Evaluating e: V{} ---> V{}".format(e.org().id, e.dest().id))
+                #debug_print("Evaluating e: V{} ---> V{}".format(e.org().id, e.dest().id))
                 self.legalize(p, e, dt)
 
     def SwapAndDag(self, e):
@@ -254,29 +273,20 @@ class Delaunay:
     
     def boundingTrianglePoints(self, points):
         
-        bbox_mx = 999999
-        bbox_Mx = -999999
-        bbox_my = 999999
         bbox_My = -999999
-        
+        bbox_Mx = -999999
 
         #O(N) really big bounds is probably much cheapher
         for p in points:
             x,y  = p[0], p[1]
-            bbox_Mx = max(x, bbox_Mx)
-            bbox_My = max(y, bbox_My)
-            bbox_mx = min(x, bbox_mx)
-            bbox_my = min(y, bbox_my)
+            bbox_Mx = max(abs(x), bbox_Mx)
+            bbox_My = max(abs(y), bbox_My)
        
-        bbox_Mx += 5
-        bbox_My += 5
-        # select x1,x2,x3 
-        x1 = np.array([bbox_mx - 5, bbox_My*2])
-        x2 = np.array([bbox_mx- 5, bbox_my-5])
-        # x1 to b slope
-        m = (x1[1] - bbox_My) / (x1[0] - bbox_Mx)
-        b0 = x1[1] - m * x1[0]
-        x3 = np.array([ x2[0]*m + b0, x2[1]]) 
+        M = 10*max(bbox_Mx, bbox_My)
+        x1 = np.array([3*M, 0])
+        x2 = np.array([0, 3*M])
+        x3 = np.array([-3*M, -3*M])
+        
         
         return [x1,x2,x3]
 
@@ -296,7 +306,7 @@ class DagNode:
         v1,v2,v3 = self.vertices
         inTri = Delaunay.isPointInTriangle(self.vertices, p)
         onEdge = Delaunay.isPointOnEdgeOfTriangle(self.vertices, p)
-        #deubg_print("Searching for {} in {}-{}-{}: [{}, {}]".format(p, v1.id, v2.id, v3.id, inTri, onEdge))
+        #debug_print("Searching for {} in {}-{}-{}: [{}, {}]".format(p, v1.id, v2.id, v3.id, inTri, onEdge))
         if not inTri and onEdge == None:
             return ("notFound", None)
         elif self.isLeaf == 1:
@@ -316,7 +326,7 @@ class DagNode:
     def expandDag(self, triV, newTri):
         assert(self.isLeaf == 1)
         ids = [v.id for v in triV]
-        #deubg_print("expand DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
+        #debug_print("expand DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
 
         self.isLeaf = 0
         self.vertices = triV
@@ -326,9 +336,9 @@ class DagNode:
             ids = [v.id for v in t.getTrianglePoints()]
             
             #if i == len(newTri)-1:
-            #    #deubg_print("\to--->DagNode[{}] contains {}: {}".format(d.id, ids, t.getTrianglePoints()))
+            #    #debug_print("\to--->DagNode[{}] contains {}: {}".format(d.id, ids, t.getTrianglePoints()))
             #else:
-            #    #deubg_print("\to--->DagNode[{}] contains {}: {}, ".format(d.id, ids, t.getTrianglePoints()))
+            #    #debug_print("\to--->DagNode[{}] contains {}: {}, ".format(d.id, ids, t.getTrianglePoints()))
             self.nodes.append(d)
 
     def joinDag(self, triV, dagNode):
@@ -336,7 +346,7 @@ class DagNode:
         assert(dagNode.isLeaf == 0)
 
         ids = [v.id for v in triV]
-        #deubg_print("join DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
+        #debug_print("join DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
         self.isLeaf = 0
         self.vertices = triV
         self.nodes = dagNode.nodes

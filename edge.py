@@ -94,6 +94,7 @@ class Edge:
     def __repr__(self):
         eid = self.id if self.id != None else "-"
         nid = self.next.id if self.next != None and self.next.id != None else "-"
+        return "V({}) -> E({}) -> V({})".format(self.org().data, eid, self.dest().data)
         return "E("+ str(eid) + ")[next: " + str(nid) + "]"
 
 class QuadEdge:
@@ -149,6 +150,18 @@ class QuadEdge:
         base.setOrg(src)
         base.setDest(dst)
         return base
+
+    @staticmethod
+    def killEdge(e):
+        l,r = e.left(), e.right()
+        r.alive = False
+        l.alive = False
+        a,b = e.oprev(), e.sym().oprev()
+        QuadEdge.splice(e,a)
+        QuadEdge.splice(e.sym(),b)
+        a.org().addEdge(a)
+        b.org().addEdge(b)
+        a.quadedge.cell.setOrbitLeft(a, l)
 
     @staticmethod
     def connect(a,b):

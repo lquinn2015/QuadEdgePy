@@ -8,7 +8,8 @@ from delaunay import Delaunay
 from debug import plotDebugTriangles, exportTriangleIds, plotCTT
 import itertools
 import matplotlib.pyplot as plt
-
+import matplotlib
+#matplotlib.use('tkagg')
 
 def test1():
 
@@ -54,6 +55,8 @@ def testAlg():
     assert(c2 != True)
     return cell
 
+
+
 def bad_swap_early():
     points = np.array([ [6.142e+00,5.630e+00], [1.327e+01,1.177e+01], [1.229e+00,1.524e+01], [5.819e+00,1.047e+01], [1.237e+01,6.706e+00], [1.070e+00,4.413e+00], [9.660e+00,1.097e+01], [1.013e+01,8.013e-01], [1.174e+00,1.292e+01], [1.136e+01,1.689e+01], [1.830e+01,1.824e+01], [1.545e+01,3.086e+00], [9.088e+00,5.509e+00], [1.003e+01,1.216e+01], [1.594e+01,1.783e+01], [1.612e+01,2.697e+00], [2.235e+00,1.245e+00], [7.109e+00,3.317e+00], [5.670e+00,1.991e+01], [1.491e+00,9.771e+00], [1.419e+00,3.166e+00], [1.043e+01,8.170e-01], [2.005e+00,1.541e+01], [4.246e+00,1.717e+01], [1.107e+01,1.106e+01], [1.083e+01,3.114e+00], [5.542e+00,1.068e+01], [1.477e+00,4.467e+00], [1.278e+01,7.295e+00], [1.138e-01,1.164e+01], [1.072e+01,2.084e+00], [1.682e+01,1.899e+00], [1.609e+01,1.662e+01], [9.644e+00,5.974e+00], [7.121e+00,1.637e+01], [1.327e+01,1.052e+01], [5.878e+00,7.818e+00], [1.024e+00,3.608e+00], [7.036e+00,6.976e+00], [1.051e+01,1.504e+01], [6.166e+00,1.253e+01], [5.648e+00,1.821e+01], [1.134e+01,4.431e+00], [1.074e+01,1.588e+01], [1.060e+01,9.051e+00], [1.358e-03,6.266e+00], [1.369e+01,5.602e+00], [1.319e+01,5.424e+00], [1.367e+01,1.367e+01], [1.392e+01,9.101e+00]])
 
@@ -64,8 +67,30 @@ def bad_swap_early():
     import matplotlib.pyplot as plt
     plt.show()
 
+def test_circle():
+    
+    dt = Delaunay()
+    points = np.array([[-np.cos(i), -np.sin(i)] for i in [ 2 * np.pi * t / 21 for t in range(1,20)]])
+    cell =dt.triangulate(points)
+    plotDebugTriangles(cell)
+
+    a = []
+    for x in range(5):
+        for y in range(4):
+            a = a + [(x -5) / 10.0,(y-5) / 10.0]
+    breakpoint()
+    points = np.array(a).reshape(20,2)
+    dt = Delaunay()
+    cell =dt.triangulate(points)
+    plotDebugTriangles(cell)
+
+
+    plt.show()
+
+
+
 def comp_test():
-    points = np.random.random((200,2)) * 20
+    points = np.random.random((50,2)) * 52 + 5
     dt = Delaunay2D() # not fast
     for p in points:
         dt.addPoint(p)
@@ -82,7 +107,7 @@ def comp_test():
     plt.show()
 
 def load_test():
-    points = np.random.random((100000,2)) * 20
+    points = np.random.random((100000,2)) * 100
     dt = Delaunay()
     cell = dt.triangulate(points)
     dv_tri = exportTriangleIds(cell)
@@ -95,4 +120,5 @@ np.set_printoptions(precision=3)
 #testSwap()
 #bad_swap_early()
 comp_test()
+#test_circle()
 #load_test()

@@ -17,12 +17,24 @@ class Vertex:
     def getEdge(self):
         return self.edge
 
-
     def rightOf(self, e):
         return Vertex.orient_test(e.dest().pos, e.org().pos, self.pos) > 0
     
     def leftOf(self, e):
         return Vertex.orient_test(e.org().pos, e.dest().pos, self.pos) > 0
+
+    def getEdgeBetween(self, o):
+        """ O(1) if planar
+        """
+        start = self.getEdge()
+        scan = start
+        scanning = True
+        while scanning:
+            if scan.dest() == o:
+                return scan
+            scan = scan.onext()
+            scanning = scan != start
+        return None
 
     @staticmethod
     def orient_test(p,q,r):
@@ -30,4 +42,4 @@ class Vertex:
 
     def __repr__(self):
         eid = self.edge.id if self.edge != None else "E(-)"
-        return "V(" + str(self.id) + ": " + str(self.pos) + ", edge: " + str(eid) +")"
+        return "V(" + str(self.data) + ": " + str(self.pos) + ", edge: " + str(eid) +")"
