@@ -42,4 +42,6 @@ class Vertex:
 
     def __repr__(self):
         eid = self.edge.id if self.edge != None else "E(-)"
+        if self.data == None:
+            return "V??"
         return "V(" + str(self.data) + ": " + str(self.pos) + ", edge: " + str(eid) +")"

@@ -9,6 +9,7 @@ from debug import plotDebugTriangles, exportTriangleIds, plotCTT
 import itertools
 import matplotlib.pyplot as plt
 import matplotlib
+# PLot to X windows server by uncommenting
 #matplotlib.use('tkagg')
 
 def test1():
@@ -70,24 +71,24 @@ def bad_swap_early():
 def test_circle():
     
     dt = Delaunay()
-    points = np.array([[-np.cos(i), -np.sin(i)] for i in [ 2 * np.pi * t / 21 for t in range(1,20)]])
+    points = np.array([[-np.cos(i), -np.sin(i)] for i in [ 2 * np.pi * t / 30 for t in range(30)]])
     cell =dt.triangulate(points)
     plotDebugTriangles(cell)
 
     a = []
     for x in range(5):
-        for y in range(4):
+        for y in range(5):
             a = a + [(x -5) / 10.0,(y-5) / 10.0]
-    breakpoint()
-    points = np.array(a).reshape(20,2)
+    points = np.array(a).reshape(25,2)
     dt = Delaunay()
     cell =dt.triangulate(points)
     plotDebugTriangles(cell)
 
-
-    plt.show()
-
-
+def on_edge_test():
+    points = np.array([[-0.1, -0.5], [-0.3,-0.2], [-0.1,-0.1], [-0.2,-0.1], [-0.4,-0.1], [-0.3,-0.4], [-0.5,-0.1], [-0.3,-0.3], [-0.2,-0.4], [-0.1,-0.4], [-0.4,-0.4], [-0.1,-0.2], [-0.2,-0.2], [-0.1,-0.3], [-0.5,-0.5], [-0.3,-0.5], [-0.5,-0.4], [-0.2,-0.3], [-0.5,-0.3], [-0.2,-0.5], [-0.4,-0.5], [-0.3,-0.1], [-0.4,-0.2], [-0.5,-0.2], [-0.4,-0.3]])
+    dt =Delaunay()
+    cell = dt.triangulate(points)
+    plotDebugTriangles(cell)
 
 def comp_test():
     points = np.random.random((50,2)) * 52 + 5
@@ -104,21 +105,39 @@ def comp_test():
     plotDebugTriangles(cell)
     dv_tri = exportTriangleIds(cell)
     print("DUT_TV_Triangles: " + str(dv_tri))
-    plt.show()
 
-def load_test():
-    points = np.random.random((100000,2)) * 100
+def load_test(load):
+    points = np.random.random((load,2)) * 100
     dt = Delaunay()
     cell = dt.triangulate(points)
+    plotDebugTriangles(cell)
     dv_tri = exportTriangleIds(cell)
     print("EdgeCount: {},  TriangleCount: {}".format(len(cell.quadedges), len(dv_tri)))
 
 
+def process_file(f):
+    points = np.genfromtxt(f, delimiter=',')
+    dt = Delaunay()
+    cell = dt.triangulate(points)
+    plotDebugTriangles(cell)
+
 np.set_printoptions(precision=3)
-#triangle = test1()
-#tetra = testAlg()
-#testSwap()
-#bad_swap_early()
-comp_test()
-#test_circle()
-#load_test()
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("-f", "--file", help="")
+args = parser.parse_args()
+if args.file:
+    if ".csv" not in args.file[-4:]:
+        print("Only can process csvs of x,y values")
+        exit()
+    process_file(args.file)
+else:
+    test_circle()
+    load_test(50)
+    load_test(100)
+    load_test(200)
+
+plt.show()
+
+

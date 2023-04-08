@@ -3,13 +3,6 @@
 
 import uuid
 
-def TrackCall(func):
-    argnames = func.__code__.co_varnames[:func.__code__.co_argcount]
-    fname = func.__name__
-    def inner(*args, **kwargs):
-        print(fname, "(", end = "")
-        print(', '.join( '% s = % r' % entry for entry in zip(argnames, args[:len(argnames)])))
-    return inner
 
 class Edge:
     def __init__(self):
@@ -94,6 +87,8 @@ class Edge:
     def __repr__(self):
         eid = self.id if self.id != None else "-"
         nid = self.next.id if self.next != None and self.next.id != None else "-"
+        if self.org() == None:
+            return "{} -> E({}) -> {}".format(self.face, eid, self.sym().face)
         return "V({}) -> E({}) -> V({})".format(self.org().data, eid, self.dest().data)
         return "E("+ str(eid) + ")[next: " + str(nid) + "]"
 
@@ -156,6 +151,7 @@ class QuadEdge:
         l,r = e.left(), e.right()
         r.alive = False
         l.alive = False
+
         a,b = e.oprev(), e.sym().oprev()
         QuadEdge.splice(e,a)
         QuadEdge.splice(e.sym(),b)
@@ -195,9 +191,9 @@ class QuadEdge:
         es = "qe: " + str(self.id) + "\n\t"
         for i,e in enumerate(self.edges): 
             if e.org() != None:
-                es += repr(e.org()) + "---"+repr(e)+"--->" + repr(e.dest()) + "\n\t"
+                es += repr(e.org()) + "---E("+repr(e.id)+")--->" + repr(e.dest()) + "\n\t"
             else:
-                es += repr(e.face) + "---" +repr(e)+"--->" + repr(e.sym().face) + "\n\t"
+                es += repr(e.face) + "---E(" +repr(e.id)+")--->" + repr(e.sym().face) + "\n\t"
         return str(es) + "\n"
 
     def __getitem__(self, index):

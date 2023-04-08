@@ -8,16 +8,17 @@ from debug import embed_debug
 import matplotlib.pyplot as plt
 
 def debug_print(s):
-    print(s)
+    #print(s)
     pass
 
 
 def debug_display(cell,name=None, disable=False):
-    plotDebugTriangles(cell, name=name)
+    #plotDebugTriangles(cell, name=name)
     pass
 
 class Delaunay:
     def triangulate(self, points):
+        np.random.shuffle(points)
         p1,p2,p3 = self.boundingTrianglePoints(points)
         bt = np.array([p1,p2,p3])
         # NOTE in order to debug add +3 to the np.arrange this will make
@@ -118,7 +119,7 @@ class Delaunay:
         e = None
         orgTri = None
         otv = None
-
+        
 
         if "inTriangle" in rc:
             orgTri = data
@@ -126,21 +127,29 @@ class Delaunay:
             faces = [orgTri, Face(dt), Face(dt)]
             otv = orgTri.getTrianglePoints()
         elif "onEdge" in rc:
-            e = edgeBetween2Vertices(data[0], data[1])
+            e = Delaunay.edgeBetween2Vertices(data[0], data[1])
+            debug_display(dt, name="before onEdge")
+            debug_print("\nleft: {}, \nright: {}".format( e.left().getTrianglePoints(), e.right().getTrianglePoints()))
             faces = [e.left(), Face(dt), e.right(), Face(dt)]
             dagNode = [e.left().data, e.right().data]
             otv = [e.left().getTrianglePoints(), e.right().getTrianglePoints()]
             e = e.oprev();
-            Cell.deleteEdge(e.onext())
+            #caution this kills faces
+            QuadEdge.killEdge(e.onext())
+            #Cell.deleteEdge(e.onext())
+        else:
+            breakpoint()
 
         v = Vertex(p, dt)
         base = QuadEdge.makeEdgeFromVertex(e.org(),v) # make center
-        QuadEdge.splice(base, e)
+        QuadEdge.splice(base, e) # makes triangle
+        debug_print("Connecting {}".format(base))
         start = base
         scaning = True
         i = 0
         while scaning:
             base = QuadEdge.connect(e, base.sym())
+            debug_print("connecting {}".format(base))
             dt.setOrbitLeft(e,faces[i])
             e = base.oprev()
             i += 1
@@ -148,8 +157,13 @@ class Delaunay:
         dt.setOrbitLeft(e,faces[i]) 
 
         if "onEdge" in rc:
-            d1.expandDag(otv[0], faces[:2])
-            d2.expandDag(otv[1], faces[2:])
+            # kill edge will terminate faces ensure they are alive
+            for f in faces:
+                f.alive = True
+            debug_print("Connected " + str(i) + " edges")
+            d1,d2 = dagNode
+            d1.expandDag(otv[0], faces[2:])
+            d2.expandDag(otv[1], faces[:2])
         else:
             dagNode = orgTri.data 
             dagNode.expandDag(otv, faces)
@@ -215,17 +229,17 @@ class Delaunay:
 
         e = v1.getEdge()
         scan = e
-        scannig = True
+        scanning = True
         while scanning:
             if scan.dest() == v2:
                 return scan
             scan = scan.oprev()
-            scannig = scan != e
+            scanning = scan != e
         return None
 
     @staticmethod
     def isPointOnEdgeOfTriangle(triangle, p):
-        v1,v2,v3 = triangle[0], triangle[1], triangle[1]
+        v1,v2,v3 = triangle[0], triangle[1], triangle[2]
         a,b,c,p = v1.pos, v2.pos, v3.pos, p[:2]
         
         abp = np.pad(np.array([a,b,p]), ((0,0),(1,0)), constant_values=1)
@@ -306,7 +320,8 @@ class DagNode:
         v1,v2,v3 = self.vertices
         inTri = Delaunay.isPointInTriangle(self.vertices, p)
         onEdge = Delaunay.isPointOnEdgeOfTriangle(self.vertices, p)
-        #debug_print("Searching for {} in {}-{}-{}: [{}, {}]".format(p, v1.id, v2.id, v3.id, inTri, onEdge))
+        debug_print("Searching for {} in {}-{}-{}: [{}, {}]".format(p, v1.id, v2.id, v3.id, inTri, onEdge))
+        onEdge = Delaunay.isPointOnEdgeOfTriangle(self.vertices, p)
         if not inTri and onEdge == None:
             return ("notFound", None)
         elif self.isLeaf == 1:
@@ -326,7 +341,7 @@ class DagNode:
     def expandDag(self, triV, newTri):
         assert(self.isLeaf == 1)
         ids = [v.id for v in triV]
-        #debug_print("expand DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
+        debug_print("expand DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
 
         self.isLeaf = 0
         self.vertices = triV
@@ -335,10 +350,10 @@ class DagNode:
             t.data = d
             ids = [v.id for v in t.getTrianglePoints()]
             
-            #if i == len(newTri)-1:
-            #    #debug_print("\to--->DagNode[{}] contains {}: {}".format(d.id, ids, t.getTrianglePoints()))
-            #else:
-            #    #debug_print("\to--->DagNode[{}] contains {}: {}, ".format(d.id, ids, t.getTrianglePoints()))
+            if i == len(newTri)-1:
+                debug_print("\to--->DagNode[{}] contains {}: {}".format(d.id, ids, t.getTrianglePoints()))
+            else:
+                debug_print("\to--->DagNode[{}] contains {}: {}, ".format(d.id, ids, t.getTrianglePoints()))
             self.nodes.append(d)
 
     def joinDag(self, triV, dagNode):
@@ -346,7 +361,7 @@ class DagNode:
         assert(dagNode.isLeaf == 0)
 
         ids = [v.id for v in triV]
-        #debug_print("join DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
+        debug_print("join DagNode[{}] contains {},  TriV {}-{}-{}".format(self.id, self.vertices,ids[0],ids[1],ids[2]))
         self.isLeaf = 0
         self.vertices = triV
         self.nodes = dagNode.nodes
